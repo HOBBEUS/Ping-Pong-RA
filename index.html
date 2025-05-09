@@ -2,82 +2,82 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ping Pong AR</title>
+    <title>Ping Pong AR sin Zoom</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <style> body { margin: 0; overflow: hidden; } </style>
+    <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.min.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; }
+    </style>
   </head>
   <body>
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-      <!-- Marcador de la pelota -->
-      <a-marker type="pattern" url="pelota.patt">
-        <a-sphere id="pelota" position="0 0.5 0" radius="0.1" color="red"></a-sphere>
+      
+      <!-- Marcador personalizado -->
+      <a-marker type="pattern" url="miimagen.patt">
+        <!-- Contenedor para alejar visualmente el juego del marcador -->
+        <a-entity id="contenedor" position="0 0 -1.5">
+          
+          <!-- Pelota -->
+          <a-sphere id="pelota" position="0 0.2 0" radius="0.1" color="red"></a-sphere>
+
+          <!-- Pala controlada por el jugador -->
+          <a-box id="pala" position="0 -0.2 0" depth="0.05" height="0.05" width="0.4" color="blue"></a-box>
+          
+        </a-entity>
       </a-marker>
 
-      <!-- Marcador de la pala, se moverá por la pantalla -->
-      <a-marker type="pattern" url="pala.patt">
-        <a-box id="pala" position="0 0.5 0" depth="0.1" height="0.5" width="0.1" color="blue" rotation="0 90 0"></a-box>
-      </a-marker>
-
-      <!-- Cámara: Ajustes de cámara para evitar el zoom -->
-      <a-entity camera position="0 1.6 2.5" look-controls="enabled: true; pointerLockEnabled: true;"></a-entity>
+      <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // Variables para controlar la pelota
+      const escena = document.querySelector('a-scene');
       const pelota = document.querySelector('#pelota');
       const pala = document.querySelector('#pala');
-      const escena = document.querySelector('a-scene');
-      
-      let velocidad = new THREE.Vector3(0.1, 0.1, 0.1);
-      let direccion = new THREE.Vector3(1, 1, 0.5); // Dirección inicial de la pelota
-      let velocidadMaxima = 0.2; // Velocidad máxima de la pelota
-      let rebote = false; // Variable para detectar si la pelota rebotó
 
-      // Función para mover la pelota
+      // Velocidad inicial
+      let velocidad = new THREE.Vector3(0.015, 0.015, 0);
+      let reboteActivo = false;
+
+      // Movimiento de la pelota
       function moverPelota() {
-        // Mover la pelota en la dirección dada
-        pelota.object3D.position.add(velocidad);
+        // Obtener posición actual
+        const pos = pelota.object3D.position;
 
-        // Rebote en las paredes (X y Z)
-        if (pelota.object3D.position.x > 2 || pelota.object3D.position.x < -2) {
-          direccion.x *= -1; // Invertir dirección en X
-        }
-        if (pelota.object3D.position.z > 2 || pelota.object3D.position.z < -2) {
-          direccion.z *= -1; // Invertir dirección en Z
-        }
+        // Rebotar en los bordes (X)
+        if (pos.x > 0.7 || pos.x < -0.7) velocidad.x *= -1;
 
-        // Rebote cuando la pelota toca la pala (colisión)
-        if (pelota.object3D.position.distanceTo(pala.object3D.position) < 0.3) {
-          if (!rebote) {
-            direccion.y *= -1; // Invertir dirección en Y
-            velocidad.multiplyScalar(1.1); // Aumentar velocidad con cada rebote
-            rebote = true;
-          }
-        } else {
-          rebote = false;
+        // Rebotar en los bordes (Y)
+        if (pos.y > 0.5) velocidad.y *= -1;
+
+        // Colisión con la pala
+        const distancia = pos.distanceTo(pala.object3D.position);
+        if (distancia < 0.2 && !reboteActivo) {
+          velocidad.y *= -1;
+          reboteActivo = true;
         }
 
-        // Aplicar la velocidad a la pelota
-        velocidad.set(direccion.x * velocidadMaxima, direccion.y * velocidadMaxima, direccion.z * velocidadMaxima);
+        // Resetear rebote cuando se aleja
+        if (distancia >= 0.2) reboteActivo = false;
+
+        // Mover la pelota
+        pos.add(velocidad);
       }
 
-      // Función para mover la pala según el toque en la pantalla
+      // Mover la pala al tocar la pantalla
       escena.addEventListener('touchstart', function (event) {
-        // Obtenemos la posición del toque
-        let posX = (event.touches[0].clientX / window.innerWidth) * 2 - 1; // Normalizar entre -1 y 1
-        pala.setAttribute('position', `${posX} 0.5 0`);
+        const touchX = event.touches[0].clientX;
+        const pantallaAncho = window.innerWidth;
+        const x = ((touchX / pantallaAncho) - 0.5) * 1.4; // rango aprox. -0.7 a 0.7
+        pala.setAttribute('position', `${x} -0.2 0`);
       });
 
-      // Función de animación principal
-      function actualizar() {
+      // Animación constante
+      function animar() {
         moverPelota();
-        requestAnimationFrame(actualizar); // Llamar a la función de animación en el siguiente frame
+        requestAnimationFrame(animar);
       }
 
-      // Iniciar la animación
-      actualizar();
+      animar();
     </script>
   </body>
 </html>
